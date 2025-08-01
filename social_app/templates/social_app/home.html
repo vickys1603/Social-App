@@ -1,0 +1,370 @@
+<!-- mini_social_app/social_app/templates/social_app/home.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniSocial Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .post-content-preview {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            /* Show maximum 3 lines */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Navigation Bar -->
+    <nav class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
+        <div class="text-2xl font-bold text-blue-600">MiniSocial</div>
+        <div class="flex items-center space-x-4">
+            <a href="javascript:history.back()" class="text-gray-600 hover:text-blue-600 focus:outline-none mr-4"> {# <--- Puthu Back button #}
+                <i class="fas fa-arrow-left text-xl"></i>
+            </a>
+            <a href="{% url 'home' %}" class="text-gray-600 hover:text-blue-600 focus:outline-none">
+                <i class="fas fa-home text-xl"></i>
+            </a>
+            {% if request.user.is_authenticated %}
+            <a href="{% url 'profile' request.user.username %}" class="flex items-center space-x-2 text-gray-800 hover:text-blue-600 focus:outline-none">
+                <img src="{% if request.user.profile_picture %}{{ request.user.profile_picture.url }}{% else %}https://placehold.co/40x40/FF5733/FFFFFF?text=U{% endif %}" alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-blue-400 object-cover">
+                <span class="font-semibold hidden md:block">{{ request.user.username }}</span>
+            </a>
+            <a href="{% url 'logout' %}" class="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition duration-300 focus:outline-none">
+                    Logout
+                </a> {% else %}
+            <a href="{% url 'login' %}" class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition duration-300 focus:outline-none">Login</a>
+            <a href="{% url 'register' %}" class="bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition duration-300 focus:outline-none">Register</a> {% endif %}
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto p-4 flex flex-col lg:flex-row gap-6">
+
+        <!-- Left Sidebar (User Profile Info - if logged in) -->
+        <aside class="lg:w-1/4 bg-white p-6 rounded-lg shadow-md flex flex-col items-center sticky top-20 h-fit">
+            {% if request.user.is_authenticated %}
+            <img src="{% if request.user.profile_picture %}{{ request.user.profile_picture.url }}{% else %}https://placehold.co/120x120/4CAF50/FFFFFF?text=P{% endif %}" alt="Profile Picture" class="w-32 h-32 rounded-full border-4 border-green-500 mb-4 object-cover">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">{{ request.user.username }}</h2>
+            {% if request.user.bio %}
+            <p class="text-gray-600 text-center mb-4">{{ request.user.bio }}</p>{% endif %}
+            <div class="flex justify-around w-full mb-4">
+                <div class="text-center">
+                    <span class="block text-lg font-bold">{{ request.user.posts.count }}</span>
+                    <span class="text-gray-500 text-sm">Posts</span>
+                </div>
+                <div class="text-center">
+                    <span class="block text-lg font-bold">{{ request.user.followers.count }}</span>
+                    <span class="text-gray-500 text-sm">Followers</span>
+                </div>
+                <div class="text-center">
+                    <span class="block text-lg font-bold">{{ request.user.following.count }}</span>
+                    <span class="text-gray-500 text-sm">Following</span>
+                </div>
+            </div>
+            <a href="{% url 'profile_edit' %}" class="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition duration-300 focus:outline-none w-full text-center">
+                    Edit Profile
+                </a>
+            <a href="{% url 'profile' request.user.username %}" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-full hover:bg-gray-300 transition duration-300 focus:outline-none w-full text-center mt-2">
+                    View Profile
+                </a> {% else %}
+            <p class="text-gray-600 text-center">Please <a href="{% url 'login' %}" class="text-blue-600 hover:underline">Login</a> or <a href="{% url 'register' %}" class="text-blue-600 hover:underline">Register</a> to see your profile.</p>
+            {% endif %}
+        </aside>
+
+        <!-- Central Content Area (Create Post & Post Feed) -->
+        <section class="lg:w-2/4 flex flex-col gap-6">
+            {% if request.user.is_authenticated %}
+            <!-- Create New Post Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Create New Post</h3>
+                <form method="post" action="{% url 'create_post' %}" class="space-y-4">
+                    {% csrf_token %} {{ post_form.content.label_tag }} {{ post_form.content }} {% if post_form.content.errors %}
+                    <ul class="errorlist">
+                        {% for error in post_form.content.errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-green-500 text-white px-6 py-2 rounded-full hover:bg-green-600 transition duration-300 focus:outline-none">
+                                Post
+                            </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Post Feed Section -->
+            <div id="postFeed" class="flex flex-col gap-6">
+                {% for post in posts %}
+                <div class="post-card bg-white p-6 rounded-lg shadow-md" data-post-id="{{ post.id }}">
+                    <div class="flex items-center mb-4">
+                        <a href="{% url 'profile' post.author.username %}" class="flex items-center">
+                            <img src="{% if post.author.profile_picture %}{{ post.author.profile_picture.url }}{% else %}https://placehold.co/50x50/3366FF/FFFFFF?text=A{% endif %}" alt="Author Avatar" class="w-12 h-12 rounded-full border-2 border-blue-400 mr-4 object-cover">
+                            <div>
+                                <h4 class="font-bold text-gray-800">{{ post.author.username }}</h4>
+                                <p class="text-gray-500 text-sm">{{ post.created_at|date:"M d, Y H:i" }}</p>
+                            </div>
+                        </a>
+                        {% if request.user.is_authenticated and request.user != post.author %} {% comment %} Follow button will be handled by JS later {% endcomment %} {% comment %} For now, just a placeholder or remove it {% endcomment %} {% endif %}
+                    </div>
+                    <p class="text-gray-700 mb-4 post-content-preview">{{ post.content }}</p>
+                    <a href="{% url 'post_detail' post.id %}" class="text-blue-500 hover:underline text-sm mb-4 block">Read More</a>
+
+                    <div class="flex items-center justify-between text-gray-600 mb-4">
+                        <div class="flex items-center space-x-4">
+                            <button class="like-btn flex items-center space-x-1 hover:text-red-500 focus:outline-none" data-post-id="{{ post.id }}">
+                                    <i class="{% if post.is_liked_by_user %}fas text-red-500{% else %}far{% endif %} fa-heart"></i>
+                                    <span class="like-count">{{ post.likes.count }}</span>
+                                </button>
+                            <button class="comment-toggle-btn flex items-center space-x-1 hover:text-blue-500 focus:outline-none">
+                                    <i class="far fa-comment"></i>
+                                    <span class="comment-count">{{ post.comments.count }}</span>
+                                </button>
+                        </div>
+                    </div>
+                    <!-- Comments Section -->
+                    <div class="comments-section border-t border-gray-200 pt-4 hidden">
+                        <div class="comments-list">
+                            {% for comment in post.comments.all %}
+                            <div class="comment flex items-start mb-3">
+                                <img src="{% if comment.author.profile_picture %}{{ comment.author.profile_picture.url }}{% else %}https://placehold.co/30x30/FFD700/000000?text=B{% endif %}" alt="Commenter Avatar" class="w-8 h-8 rounded-full mr-3 object-cover">
+                                <div>
+                                    <p class="text-gray-800"><span class="font-semibold">{{ comment.author.username }}:</span> {{ comment.content }}</p>
+                                    <p class="text-gray-500 text-xs">{{ comment.created_at|date:"M d, Y H:i" }}</p>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-gray-500 text-sm">No comments yet.</p>
+                            {% endfor %}
+                        </div>
+                        {% if request.user.is_authenticated %}
+                        <div class="comment-input flex items-center mt-4">
+                            <input type="text" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-300 focus:border-transparent comment-content-input" placeholder="Add a comment...">
+                            <button class="ml-2 bg-blue-500 text-white px-4 py-2 rounded-full text-sm hover:bg-blue-600 transition duration-300 focus:outline-none post-comment-btn" data-post-id="{{ post.id }}">Post</button>
+                        </div>
+                        {% else %}
+                        <p class="text-gray-500 text-sm mt-4">Please <a href="{% url 'login' %}" class="text-blue-600 hover:underline">login</a> to comment.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-600 text-center text-lg mt-8">No posts to display yet. Follow more users or create your first post!</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Right Sidebar (Suggested Users/Trends - Optional) -->
+        <aside class="lg:w-1/4 bg-white p-6 rounded-lg shadow-md sticky top-20 h-fit hidden lg:block">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Suggested For You</h3>
+            <div class="flex flex-col gap-4">
+                {% for suggested_user in suggested_users %} {#
+                <--- Idhu dhaan puthu loop #} <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <img src="{% if suggested_user.profile_picture %}{{ suggested_user.profile_picture.url }}{% else %}https://placehold.co/40x40/9370DB/FFFFFF?text=F{% endif %}" alt="Suggested User Avatar" class="w-10 h-10 rounded-full mr-3 object-cover">
+                        <a href="{% url 'profile' suggested_user.username %}" class="font-semibold text-gray-800 hover:underline">{{ suggested_user.username }}</a>
+                    </div>
+                    {% if request.user.is_authenticated and request.user != suggested_user %}
+                    <button class="follow-toggle-btn {% if suggested_user.is_followed_by_user %}bg-gray-400 hover:bg-gray-500{% else %}bg-blue-500 hover:bg-blue-600{% endif %} text-white px-3 py-1 rounded-full text-sm transition duration-300 focus:outline-none" data-user-id="{{ suggested_user.id }}">
+                            {% if suggested_user.is_followed_by_user %}Following{% else %}Follow{% endif %}
+                        </button> {% endif %}
+            </div>
+            {% endfor %} {#
+            <--- Loop-a close pannunga #} </div>
+        </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white p-4 text-center mt-6">
+        &copy; 2025 MiniSocial. All rights reserved.
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Like Button Functionality (AJAX) ---
+            document.querySelectorAll('.like-btn').forEach(button => {
+                button.addEventListener('click', async() => {
+                    const postId = button.dataset.postId;
+                    const icon = button.querySelector('i');
+                    const countSpan = button.querySelector('.like-count');
+
+                    try {
+                        const response = await fetch('{% url "like_post" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': getCookie('csrftoken') // Get CSRF token
+                            },
+                            body: `post_id=${postId}`
+                        });
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            if (data.liked) {
+                                icon.classList.remove('far');
+                                icon.classList.add('fas', 'text-red-500');
+                            } else {
+                                icon.classList.remove('fas', 'text-red-500');
+                                icon.classList.add('far');
+                            }
+                            countSpan.textContent = data.likes_count;
+                        } else {
+                            console.error('Error liking post:', data.message);
+                            alert('Error liking post: ' + data.message); // Use a custom modal in real app
+                        }
+                    } catch (error) {
+                        console.error('Fetch error:', error);
+                        alert('An error occurred while liking the post.'); // Use a custom modal
+                    }
+                });
+            });
+
+            // --- Comment Toggle Functionality ---
+            document.querySelectorAll('.comment-toggle-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const postCard = button.closest('.post-card');
+                    const commentsSection = postCard.querySelector('.comments-section');
+                    commentsSection.classList.toggle('hidden');
+                });
+            });
+
+            // --- Add Comment Functionality (AJAX) ---
+            document.querySelectorAll('.post-comment-btn').forEach(button => {
+                button.addEventListener('click', async() => {
+                    const postId = button.dataset.postId;
+                    const commentInput = button.previousElementSibling; // Input field is sibling
+                    const content = commentInput.value.trim();
+
+                    if (!content) {
+                        alert('Comment cannot be empty.'); // Use custom modal
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('{% url "add_comment" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: `post_id=${postId}&content=${encodeURIComponent(content)}`
+                        });
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            const commentsList = button.closest('.comments-section').querySelector('.comments-list');
+                            const newCommentHtml = `
+                                <div class="comment flex items-start mb-3">
+                                    <img src="{% if request.user.profile_picture %}{{ request.user.profile_picture.url }}{% else %}https://placehold.co/30x30/FFD700/000000?text=B{% endif %}" alt="Commenter Avatar" class="w-8 h-8 rounded-full mr-3 object-cover">
+                                    <div>
+                                        <p class="text-gray-800"><span class="font-semibold">${data.author_username}:</span> ${data.comment_content}</p>
+                                        <p class="text-gray-500 text-xs">${data.created_at}</p>
+                                    </div>
+                                </div>
+                            `;
+                            commentsList.insertAdjacentHTML('beforeend', newCommentHtml);
+                            commentInput.value = ''; // Clear input
+
+                            // Update comment count on the post card
+                            const postCard = button.closest('.post-card');
+                            const commentCountSpan = postCard.querySelector('.comment-count');
+                            commentCountSpan.textContent = data.comments_count;
+
+                        } else {
+                            console.error('Error adding comment:', data.message);
+                            alert('Error adding comment: ' + data.message); // Use custom modal
+                        }
+                    } catch (error) {
+                        console.error('Fetch error:', error);
+                        alert('An error occurred while adding the comment.'); // Use custom modal
+                    }
+                });
+            });
+
+            // --- Follow/Unfollow Button Functionality (AJAX) ---
+            document.querySelectorAll('.follow-toggle-btn').forEach(button => {
+                button.addEventListener('click', async() => {
+                    const userIdToFollow = button.dataset.userId;
+                    const currentButton = button;
+
+                    try {
+                        const response = await fetch('{% url "follow_toggle" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: `user_id=${userIdToFollow}`
+                        });
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            // Update followers count on the current page if it's a profile page
+                            const followersCountSpan = document.querySelector('.profile-stats div:nth-child(2) span:first-child');
+                            if (followersCountSpan) { // Check if element exists (only on profile page)
+                                followersCountSpan.textContent = data.followers_count;
+                            }
+
+                            if (data.followed) {
+                                currentButton.textContent = 'Following';
+                                currentButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                                currentButton.classList.add('bg-gray-400', 'hover:bg-gray-500');
+                            } else {
+                                currentButton.textContent = 'Follow';
+                                currentButton.classList.remove('bg-gray-400', 'hover:bg-gray-500');
+                                currentButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                            }
+                        } else {
+                            console.error('Error toggling follow:', data.message);
+                            alert('Error: ' + data.message);
+                        }
+                    } catch (error) {
+                        console.error('Fetch error:', error);
+                        alert('An error occurred.');
+                    }
+                });
+            });
+
+
+            // --- Helper function to get CSRF token ---
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+        });
+    </script>
+</body>
+
+</html>

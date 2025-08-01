@@ -1,0 +1,251 @@
+<!-- mini_social_app/social_app/templates/social_app/profile.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ user_profile.username }}'s Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        
+        .profile-header {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .profile-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border: 4px solid #3B82F6;
+        }
+        
+        .profile-stats div {
+            flex: 1;
+        }
+        
+        .post-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .post-card {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .post-content {
+            max-height: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        /* For truncated text preview */
+    </style>
+</head>
+
+<body>
+    <nav class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
+        <div class="text-2xl font-bold text-blue-600">MiniSocial</div>
+        <div class="flex items-center space-x-4">
+            <a href="javascript:history.back()" class="text-gray-600 hover:text-blue-600 focus:outline-none mr-4"> {# <--- Puthu Back button #}
+                <i class="fas fa-arrow-left text-xl"></i>
+            </a>
+            <a href="{% url 'home' %}" class="text-gray-600 hover:text-blue-600 focus:outline-none">
+                <i class="fas fa-home text-xl"></i>
+            </a>
+            {% if request.user.is_authenticated %}
+            <a href="{% url 'profile' request.user.username %}" class="flex items-center space-x-2 text-gray-800 hover:text-blue-600 focus:outline-none">
+                <img src="{% if request.user.profile_picture %}{{ request.user.profile_picture.url }}{% else %}https://placehold.co/40x40/FF5733/FFFFFF?text=U{% endif %}" alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-blue-400 object-cover">
+                <span class="font-semibold hidden md:block">{{ request.user.username }}</span>
+            </a>
+            <a href="{% url 'logout' %}" class="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition duration-300 focus:outline-none">
+                    Logout
+                </a> {% else %}
+            <a href="{% url 'login' %}" class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition duration-300 focus:outline-none">Login</a>
+            <a href="{% url 'register' %}" class="bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition duration-300 focus:outline-none">Register</a> {% endif %}
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 mt-6">
+        <div class="profile-header mb-6">
+            <img src="{% if user_profile.profile_picture %}{{ user_profile.profile_picture.url }}{% else %}https://placehold.co/120x120/4CAF50/FFFFFF?text=P{% endif %}" alt="{{ user_profile.username }}'s Profile Picture" class="profile-image mx-auto rounded-full mb-4">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ user_profile.username }}</h1>
+            {% if user_profile.email %}
+            <p class="text-gray-600 mb-2">{{ user_profile.email }}</p>{% endif %} {% if user_profile.bio %}
+            <p class="text-gray-700 max-w-lg mx-auto mb-4">{{ user_profile.bio }}</p>{% endif %}
+
+            <div class="flex justify-center space-x-8 text-gray-700 profile-stats mb-4">
+                <div>
+                    <span class="block text-xl font-bold">{{ posts.count }}</span>
+                    <span class="text-sm">Posts</span>
+                </div>
+                <div>
+                    <span class="block text-xl font-bold">{{ followers_count }}</span>
+                    <span class="text-sm">Followers</span>
+                </div>
+                <div>
+                    <span class="block text-xl font-bold">{{ following_count }}</span>
+                    <span class="text-sm">Following</span>
+                </div>
+            </div>
+
+            {% if is_owner %}
+            <a href="{% url 'profile_edit' %}" class="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition duration-300 focus:outline-none inline-block">
+                    Edit Profile
+                </a> {% else %} {% if request.user.is_authenticated %} {# --- Idhu dhaan update panna vendiya button --- #}
+            <button class="follow-toggle-btn {% if is_following %}bg-gray-400 hover:bg-gray-500{% else %}bg-blue-500 hover:bg-blue-600{% endif %} text-white px-6 py-2 rounded-full transition duration-300 focus:outline-none" data-user-id="{{ user_profile.id }}">
+                        {% if is_following %}Following{% else %}Follow{% endif %}
+                    </button> {% endif %} {% endif %}
+        </div>
+
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Posts by {{ user_profile.username }}</h2>
+        {% if posts %}
+        <div class="post-grid">
+            {% for post in posts %}
+            <div class="post-card">
+                <p class="text-gray-800 mb-2 post-content">{{ post.content }}</p>
+                <p class="text-gray-500 text-sm">{{ post.created_at|date:"M d, Y H:i" }}</p>
+                <div class="flex items-center space-x-4 mt-3 text-gray-600">
+                    <span class="flex items-center space-x-1">
+                                <i class="fas fa-heart text-red-500"></i>
+                                <span>{{ post.likes.count }}</span>
+                    </span>
+                    <span class="flex items-center space-x-1">
+                                <i class="fas fa-comment text-blue-500"></i>
+                                <span>{{ post.comments.count }}</span>
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-600 text-center">No posts yet.</p>
+        {% endif %}
+    </main>
+
+    <footer class="bg-gray-800 text-white p-4 text-center mt-6">
+        &copy; 2025 MiniSocial. All rights reserved.
+    </footer>
+
+    <script>
+        // --- Helper function to get CSRF token ---
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Like Button Functionality (AJAX) ---
+            // This is for posts on the profile page, similar to home.html
+            document.querySelectorAll('.post-card .fa-heart').forEach(icon => {
+                icon.closest('span').addEventListener('click', async(event) => {
+                    // Ensure the click is on the span containing the icon and count
+                    const button = event.currentTarget.closest('.flex.items-center.space-x-1');
+                    if (!button) return; // Exit if not the intended button
+
+                    const postId = button.closest('.post-card').dataset.postId;
+                    const countSpan = button.querySelector('span:last-child');
+                    const heartIcon = button.querySelector('i');
+
+                    try {
+                        const response = await fetch('{% url "like_post" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: `post_id=${postId}`
+                        });
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            if (data.liked) {
+                                heartIcon.classList.remove('far');
+                                heartIcon.classList.add('fas', 'text-red-500');
+                            } else {
+                                heartIcon.classList.remove('fas', 'text-red-500');
+                                heartIcon.classList.add('far');
+                            }
+                            countSpan.textContent = data.likes_count;
+                        } else {
+                            console.error('Error liking post:', data.message);
+                            alert('Error liking post: ' + data.message);
+                        }
+                    } catch (error) {
+                        console.error('Fetch error:', error);
+                        alert('An error occurred while liking the post.');
+                    }
+                });
+            });
+
+
+            // --- Follow/Unfollow Button Functionality (AJAX) ---
+            document.querySelectorAll('.follow-toggle-btn').forEach(button => {
+                button.addEventListener('click', async() => {
+                    const userIdToFollow = button.dataset.userId;
+                    const currentButton = button; // Reference to the clicked button
+
+                    try {
+                        const response = await fetch('{% url "follow_toggle" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: `user_id=${userIdToFollow}`
+                        });
+                        const data = await response.json();
+
+                        if (data.status === 'success') {
+                            const followersCountSpan = document.querySelector('.profile-stats div:nth-child(2) span:first-child');
+                            if (followersCountSpan) { // Check if element exists (only on profile page)
+                                followersCountSpan.textContent = data.followers_count;
+                            }
+
+                            if (data.followed) {
+                                currentButton.textContent = 'Following';
+                                currentButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                                currentButton.classList.add('bg-gray-400', 'hover:bg-gray-500');
+                            } else {
+                                currentButton.textContent = 'Follow';
+                                currentButton.classList.remove('bg-gray-400', 'hover:bg-gray-500');
+                                currentButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                            }
+                        } else {
+                            console.error('Error toggling follow:', data.message);
+                            alert('Error: ' + data.message);
+                        }
+                    } catch (error) {
+                        console.error('Fetch error:', error);
+                        alert('An error occurred.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
